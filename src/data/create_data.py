@@ -6,19 +6,18 @@ from sdv.single_table import TVAESynthesizer
 class DataSynthesizer:
     def __init__(self, filename):
         self.metadata = SingleTableMetadata()
-        self.customer_data = self.load_data(filename)
+        self.data = self.load_data(filename)
 
     def load_data(self, filename) -> pd.DataFrame:
         """
         Load data from a csv file.
         """
         return pd.read_csv(filename)
-
     def detect_metadata(self):
         """
         Detect metadata from the loaded data.
         """
-        self.metadata.detect_from_dataframe(self.customer_data)
+        self.metadata.detect_from_dataframe(self.data)
 
     def create_synthesizer(self) -> TVAESynthesizer:
         """
@@ -31,7 +30,7 @@ class DataSynthesizer:
         Create a synthetic test data set of num_rows rows.
         """
         synthesizer = self.create_synthesizer()
-        synthesizer.fit(self.customer_data)
+        synthesizer.fit(self.data)
         synthetic_data = synthesizer.sample(num_rows=num_rows)
         synthetic_target = synthetic_data["Segmentation"]
         synthetic_features = synthetic_data.drop("Segmentation", axis=1)
@@ -42,17 +41,20 @@ class DataSynthesizer:
         Create a synthetic train data set of num_rows rows.
         """
         synthesizer = self.create_synthesizer()
-        synthesizer.fit(self.customer_data)
+        synthesizer.fit(self.data)
         return synthesizer.sample(num_rows=num_rows)
 
 if __name__ == "__main__":
-    today = datetime.datetime.today.strftime("%Y-%m-%d")
+    today = datetime.today().strftime("%Y-%m-%d")
 
     synthesizer = DataSynthesizer("./original/Train.csv")
+    print(synthesizer.data.info())
     synthesizer.detect_metadata()
+    print("creating test data")
     test_features, test_target = synthesizer.create_test_data()
+    print("creating training data")
     train_data = synthesizer.create_train_data()
-
+    # TODO: create save and load for synthesizer
     # TODO: create pipeline to generate and load data to cloud storage
     test_features.to_csv(f"./synthetic/{today}_test_features.csv")
     test_target.to_csv(f"./synthetic/{today}_test_target.csv")
