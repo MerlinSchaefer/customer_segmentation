@@ -1,0 +1,16 @@
+# The main pipeline for customer segmentation
+resources:
+  pipelines:
+    customer_segmentation_pipeline:
+      name: customer_segmentation_pipeline  # Name of the pipeline
+      target: customer_segmentation_${bundle.environment}  # Output target with environment variable
+      libraries:
+        - notebook:
+            path: ../src/dlt_pipeline.ipynb  # Path to your DLT notebook where you define the pipeline
+      
+      configuration:
+        bundle.sourcePath: /Workspace/${workspace.file_path}/src
+        cloudFiles.inputPath: "/dbfs/your_raw_data_directory"  # Path to the raw CSVs in DBFS (Auto Loader watches this directory)
+        cloudFiles.format: "csv"  # Input data format
+        cloudFiles.maxFilesPerTrigger: "1"  # Control the number of files processed per trigger
+        cloudFiles.header: "true"  # Ensure that Auto Loader recognizes the header in CSV
