@@ -8,14 +8,14 @@ from pyspark.sql.functions import col
 @dlt.table(
     comment = "silver table with valid customer data for training"
 )
-@dlt.expect_all_or_drop({
-    "valid_id": "id IS NOT NULL",  # Ensure ID is not null
-    "valid_segmentation": "segmentation IS NOT NULL AND segmentation IS IN ('A', 'B', 'C', 'D')"  # Ensure Segmentation (target) is not null
+@dlt.expect_all_or_drop(
+    {"valid_id": "id IS NOT NULL",  # Ensure ID is not null
+    "valid_segmentation": "segmentation IS NOT NULL AND segmentation IN ('A', 'B', 'C', 'D')",  # Ensure Segmentation (target) is not null
     "non_negative_age": "age >= 0",
-    "valid_age": "age <= 120","
+    "valid_age": "age <= 120",
     "valid_family_size": "family_size >= 0 AND family_size <= 15",
-    "valid_work_experience": "work_experience >= 0 AND work_experience <= 50"
-})
+    "valid_work_experience": "work_experience >= 0 AND work_experience <= 50"}
+    )
 def silver_training_customer_data():
     bronze_df = dlt.read("bronze_training_customer_data")
     # Standardize column names (lowercase, underscores instead of spaces)
