@@ -32,7 +32,9 @@ def gold_mapping_lookup():
     lookup_df = None
     
     # Iterate through custom mappings and create a DataFrame for each, then union them
-    for mapping, columns in custom_mapping:
+    for mapping_entry in custom_mappings:
+        mapping = mapping_entry['mapping']
+        columns = mapping_entry['columns']
         for column in columns:
             if lookup_df is None:
                 lookup_df = create_lookup_df(mapping, column)
@@ -53,26 +55,26 @@ def gold_customer_features():
     
     # encoding of categorical variables
     # Custom encoding for Ever_Married, Graduated, Gender, and Spending_Score
-    for mapping_entry in custom_mapping:
-            mapping = mapping_entry['mapping']
-            columns = mapping_entry['columns']
-            for column in columns:
-                gold_df = gold_df.withColumn(column, 
-                    when(col(column).isin(mapping.keys()), 
-                        create_map([lit(k), lit(v) for k, v in mapping.items()])[col(column)]
-                    ).otherwise(lit(None)))  # Handle invalid values by setting to None
+    for mapping_entry in custom_mappings:
+        mapping = mapping_entry['mapping']
+        columns = mapping_entry['columns']
+        for column in columns:
+            gold_df = gold_df.withColumn(column, 
+                when(col(column).isin(mapping.keys()), 
+                    create_map([(lit(k), lit(v)) for k, v in mapping.items()])[col(column)]
+                ).otherwise(lit(None))
+            )
+    # Mode Imputation for all categorical columns
+    for column in categorical_columns_custom:
+        mode_value = gold_df.groupBy(column).count().orderBy(desc("count")).first()[0]  # Calculate mode
+        gold_df = gold_df.withColumn(column, when(col(column).isNull(), lit(mode_value)).otherwise(col(column)))
 
-        # Mode Imputation for all categorical columns
-        for column in categorical_columns_custom:
-            mode_value = gold_df.groupBy(column).count().orderBy(desc("count")).first()[0]  # Calculate mode
-            gold_df = gold_df.withColumn(column, when(col(column).isNull(), lit(mode_value)).otherwise(col(column)))
+    # Median Imputation for all numerical columns
+    for column in numerical_columns:
+        median_value = gold_df.approxQuantile(column, [0.5], 0.01)[0]  # Calculate median
+        gold_df = gold_df.withColumn(column, when(col(column).isNull(), lit(median_value)).otherwise(col(column)))
 
-        # Median Imputation for all numerical columns
-        for column in numerical_columns:
-            median_value = gold_df.approxQuantile(column, [0.5], 0.01)[0]  # Calculate median
-            gold_df = gold_df.withColumn(column, when(col(column).isNull(), lit(median_value)).otherwise(col(column)))
-
-        return gold_df
+    return gold_df
 
 @dlt.table
 def gold_customer_ml_target():
