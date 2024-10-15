@@ -6,11 +6,19 @@ resources:
       target: customer_segmentation_${bundle.environment}  # Output target with environment variable
       libraries:
         - notebook:
-            path: ../src/dlt_pipeline.ipynb  # Path to your DLT notebook where you define the pipeline
+            path: ../src/01_bronze_table.py
+        - notebook:
+            path: ../src/02_silver_table.py
+        - notebook:
+            path: ../src/03_gold_table.py
       
+      development: true
       configuration:
         bundle.sourcePath: /Workspace/${workspace.file_path}/src
-        cloudFiles.inputPath: "/dbfs/your_raw_data_directory"  # Path to the raw CSVs in DBFS (Auto Loader watches this directory)
+        cloudFiles.inputPath: "/dbfs/FileStore/customer_segmentation/train"  # Path to the raw CSVs in DBFS (Auto Loader watches this directory)
         cloudFiles.format: "csv"  # Input data format
         cloudFiles.maxFilesPerTrigger: "1"  # Control the number of files processed per trigger
         cloudFiles.header: "true"  # Ensure that Auto Loader recognizes the header in CSV
+        bronze_schema_path: /Workspace/${workspace.file_path}/dlt_schemas.yml
+        bronze_schema_name: "bronze_schema"
+        gold_table_config_path: /Workspace/${workspace.file_path}/gold_table_config.yml

@@ -1,0 +1,24 @@
+# dlt_schemas.yaml
+bronze_schema:
+  - name: ID
+    type: integer
+  - name: Gender
+    type: string
+  - name: Ever_Married
+    type: string
+  - name: Age
+    type: int
+  - name: Graduated
+    type: string
+  - name: Profession
+    type: string
+  - name: Work_Experience
+    type: float
+  - name: Spending_Score
+    type: string
+  - name: Family_Size
+    type: float
+  - name: Var_1
+    type: string
+  - name: Segmentation
+    type: string
