@@ -4,6 +4,14 @@ resources:
     customer_segmentation_pipeline:
       name: customer_segmentation_pipeline  # Name of the pipeline
       target: customer_segmentation_${bundle.environment}  # Output target with environment variable
+      clusters:
+        - label: default
+        num_workers: 1
+        node_type_id: Standard_DS3_v2
+        driver_node_type_id: Standard_DS3_v2
+        init_scripts:
+          - workspace : 
+              destination : "${workspace.file_path}/src/init_scripts/dlt_init_script.sh"
       libraries:
         - notebook:
             path: ../src/01_bronze_table.py
