@@ -52,7 +52,7 @@ def create_lookup_df(mapping: dict, column_name: str) -> DataFrame:
     Returns:
         A Spark DataFrame with two columns: column and string_value
     """
-    lookup_list = [(k, v) for k, v in mapping.items()]
+    lookup_list = [(str(k), float(v), column_name) for k, v in mapping.items()]
         # Define an explicit schema
     schema = T.StructType([
         T.StructField("string_value", T.StringType(), True),
