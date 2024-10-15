@@ -2,16 +2,16 @@ import yaml
 from pyspark.sql import types as T
 from pyspark.sql import DataFrame
 
-def load_schema_from_yaml(yaml_path: str, schema_name:str) -> T.StructType:
+def load_schema_from_yaml(yaml_path: str, schema_name: str) -> T.StructType:
     """
-    Load a schema from a YAML file into spark format
+    Load a schema from a YAML file into Spark format.
 
     Args:
-        yaml_path (str): Path to the YAML file
+        yaml_path (str): Path to the YAML file.
         schema_name (str): Name of the schema to load. 
-                            Must match the yaml.
+                            Must match the YAML.
     Returns:
-        A Spark StructType object for the specified schema
+        A Spark StructType object for the specified schema.
     """
     with open(yaml_path, 'r') as yaml_file:
         schemas = yaml.safe_load(yaml_file)
@@ -20,7 +20,8 @@ def load_schema_from_yaml(yaml_path: str, schema_name:str) -> T.StructType:
     schema_fields = schemas[schema_name]
     
     # Convert the schema definition into a Spark StructType
-    fields = [T.StructField(field['name'], getattr(T, field['type'].capitalize())(), True) for field in schema_fields]
+    fields = [T.StructField(field['name'], getattr(T, field['type'])(), True) for field in schema_fields]
+    
     return T.StructType(fields)
 
 

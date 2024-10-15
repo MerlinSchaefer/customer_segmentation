@@ -1,24 +1,24 @@
 # dlt_schemas.yaml
 bronze_schema:
   - name: ID
-    type: integer
+    type: IntegerType
   - name: Gender
-    type: string
+    type: StringType
   - name: Ever_Married
-    type: string
+    type: StringType
   - name: Age
-    type: int
+    type: IntegerType
   - name: Graduated
-    type: string
+    type: StringType
   - name: Profession
-    type: string
+    type: StringType
   - name: Work_Experience
-    type: float
+    type: FloatType
   - name: Spending_Score
-    type: string
+    type: StringType
   - name: Family_Size
-    type: float
+    type: FloatType
   - name: Var_1
-    type: string
+    type: StringType
   - name: Segmentation
-    type: string
+    type: StringType
