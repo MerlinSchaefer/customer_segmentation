@@ -26,7 +26,7 @@ def bronze_training_customer_data():
     return (
         spark.readStream.format("cloudFiles")  # Use Auto Loader
         .option("cloudFiles.format", file_format)
-        .option("cloudFiles.header", header_option)  # Ensure header is recognized
+        .option("header", header_option)  # Ensure header is recognized
         .option("cloudFiles.maxFilesPerTrigger", max_files_per_trigger)
         .schema(raw_data_schema)
         .load(input_path)  # Path and other options are configured in the YAML
