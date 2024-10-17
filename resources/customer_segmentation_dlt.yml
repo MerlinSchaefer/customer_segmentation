@@ -23,7 +23,7 @@ resources:
       development: true
       configuration:
         bundle.sourcePath: /Workspace/${workspace.file_path}/src
-        cloudFiles.inputPath: "/dbfs/FileStore/customer_segmentation/train"  # Path to the raw CSVs in DBFS (Auto Loader watches this directory)
+        cloudFiles.inputPath: "/FileStore/customer_segmentation/train/"  # Path to the raw CSVs in DBFS (Auto Loader watches this directory)
         cloudFiles.format: "csv"  # Input data format
         cloudFiles.maxFilesPerTrigger: "1"  # Control the number of files processed per trigger
         cloudFiles.header: "true"  # Ensure that Auto Loader recognizes the header in CSV
