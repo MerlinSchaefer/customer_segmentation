@@ -1,8 +1,9 @@
 # Databricks notebook source
 import dlt
-from pyspark.sql.functions import when, col, lit, create_map, desc
+from pyspark.sql.functions import when, col, lit, desc
+from pyspark.sql.types import IntegerType, FloatType
 from databricks.sdk.runtime import *
-from dlt_utils import create_lookup_df, load_yaml_config
+from dlt_utils import create_lookup_df, load_yaml_config, get_column_data_type
 
 # COMMAND ----------
 
@@ -87,7 +88,6 @@ def gold_customer_features():
 
         # Apply mapping for each column in the list
         for column in columns:
-            # Apply the mapping using when() and lit(), chaining the conditions for each mapping key
             col_expr = None
             for key, value in mapping.items():
                 # Add a new when() clause for each mapping
@@ -98,24 +98,45 @@ def gold_customer_features():
 
             # Final fallback if no mapping is found (set to None or leave the column as is)
             col_expr = col_expr.otherwise(lit(None))
-
-            # Update the DataFrame with the transformed column
             gold_df = gold_df.withColumn(column, col_expr)
+
 
     # Mode Imputation for all categorical columns
     for column in categorical_columns_custom:
+        # Calculate mode safely by checking if there are valid results
         mode_value_row = gold_df.groupBy(column).count().orderBy(desc("count")).first()
-        mode_value = mode_value_row[0]
-        mode_value = str(mode_value) if isinstance(mode_value, bool) else mode_value
-        gold_df = gold_df.withColumn(column, when(col(column).isNull(), lit(mode_value)).otherwise(col(column)))
-
-
+        
+        if mode_value_row is not None and mode_value_row[0] is not None:
+            # Get the mode value
+            mode_value = mode_value_row[0]
+            # Convert booleans to string, if needed
+            mode_value = str(mode_value) if isinstance(mode_value, bool) else mode_value
+            # Apply mode imputation
+            gold_df = gold_df.withColumn(column, when(col(column).isNull(), lit(mode_value)).otherwise(col(column)))
+        else:
+            print(f"No mode value found for column {column}. Skipping imputation.")
 
     # Median Imputation for all numerical columns
     for column in numerical_columns:
-        median_value = gold_df.approxQuantile(column, [0.5], 0.01)[0]
-        median_value = float(median_value)
-        gold_df = gold_df.withColumn(column, when(col(column).isNull(), lit(median_value)).otherwise(col(column)))
+        # Get the original data type of the column
+        original_type = get_column_data_type(gold_df, column)
+
+        # Calculate median safely
+        median_values = gold_df.approxQuantile(column, [0.5], 0.01)
+        
+        if median_values and len(median_values) > 0:  # Ensure the list is not empty
+            # Convert to float and apply median imputation
+            median_value = float(median_values[0])
+            gold_df = gold_df.withColumn(column, when(col(column).isNull(), lit(median_value)).otherwise(col(column)))
+            
+            # After imputation, cast the column back to its original data type
+            if isinstance(original_type, IntegerType):
+                gold_df = gold_df.withColumn(column, col(column).cast("int"))
+            elif isinstance(original_type, FloatType):
+                gold_df = gold_df.withColumn(column, col(column).cast("float"))
+        else:
+            print(f"No median value found for column {column}. Skipping imputation.")
+
 
 
     return gold_df

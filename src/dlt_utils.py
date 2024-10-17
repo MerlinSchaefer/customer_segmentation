@@ -4,6 +4,13 @@ from pyspark.sql import DataFrame
 from pyspark.sql.functions import lit
 from databricks.sdk.runtime import *
 
+
+
+# Function to get the data type of a column
+def get_column_data_type(df, column):
+    return [field.dataType for field in df.schema.fields if field.name == column][0]
+
+
 def load_schema_from_yaml(yaml_path: str, schema_name: str) -> T.StructType:
     """
     Load a schema from a YAML file into Spark format.
