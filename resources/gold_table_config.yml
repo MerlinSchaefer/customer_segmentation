@@ -1,0 +1,39 @@
+categorical_columns:
+  custom: 
+    - "ever_married"
+    - "graduated"
+    - "gender"
+    - "spending_score"
+    - "profession"
+    - "var_1"
+  onehot:
+    - "profession"
+    - "var_1"
+  ordinal:
+    - "spending_score"
+
+numerical_columns:
+  - "age"
+  - "family_size"
+  - "work_experience"
+
+custom_mappings:
+  - mapping: 
+      Yes: 1
+      No: 0
+    columns: ["ever_married", "graduated"]
+  - mapping: 
+      Male: 1
+      Female: 0
+    columns: ["gender"]
+  - mapping: 
+      Low: 0
+      Average: 1
+      High: 2
+    columns: ["spending_score"]
+
+custom_mapping_target:
+  A: 1
+  B: 2
+  C: 3
+  D: 4
