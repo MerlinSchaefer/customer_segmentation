@@ -30,3 +30,4 @@ resources:
         bronze_schema_path: /Workspace/${workspace.file_path}/resources/dlt_schemas.yml
         bronze_schema_name: "bronze_schema"
         gold_table_config_path: /Workspace/${workspace.file_path}/resources/gold_table_config.yml
+        pipeline_path: "dbfs:/FileStore/customer_segmentation/pipelines/preprocessing"
