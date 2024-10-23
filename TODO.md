@@ -11,14 +11,14 @@
 ## ML
 
 - [x] EDA for ML
-- [ ] create pipline to load a preprocess data
-    - [ ] feature engineering
-    - [ ] data cleaning
-    - [ ] create funcs for loading pipelines
-    - [ ] create funcs for creating and saving pipelines with different steps
+- [x] create pipline to load and preprocess data
+    - [x] feature engineering
+    - [x] data cleaning
+    - [x] create funcs for loading pipelines
+    - [x] create funcs for creating and saving pipelines with different steps
 - [ ] create MLOps structure
     - [ ] set up experiment tracking
-    - [ ] set up feature store
+    - [ ] set up feature store (discarded)
     - [ ] set up model registry
 
 - [ ] explore and tune models
