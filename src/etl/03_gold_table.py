@@ -6,6 +6,13 @@ from pyspark.ml import PipelineModel
 from databricks.sdk.runtime import *
 from dlt_utils import create_lookup_df, load_yaml_config, get_column_data_type
 
+from databricks.feature_store import FeatureStoreClient
+
+
+# COMMAND ----------
+
+fs = FeatureStoreClient()
+
 # COMMAND ----------
 
 spark.read.format("csv").option("header", "true").load("/FileStore/customer_segmentation/train/").show()
@@ -75,9 +82,9 @@ def gold_customer_ml_target():
 #     # Debugging by outputting the intermediate gold_df
 #     return gold_df
 
-# Gold Table: Business-ready or aggregated data
+
 @dlt.table
-def gold_customer_features():
+def gold_customer_complete():
     silver_df = dlt.read("silver_training_customer_data")
     gold_df = silver_df.drop("id", "segmentation","inserted_at")
     # custom imputation for missing values of profession and ever_married
@@ -144,8 +151,8 @@ def gold_customer_features():
 
 # COMMAND ----------
 
-  # TODO: MOVE PATH TO CONFIG
-  pipeline_path = "dbfs:/FileStore/customer_segmentation/pipelines/preprocessing" # spark.conf.get("pipeline_path")
+# TODO: MOVE PATH TO CONFIG
+spark.conf.get("pipeline_path")
 
 # COMMAND ----------
 
@@ -162,8 +169,7 @@ def gold_scaled_features():
 
     gold_df_transformed = pipeline_model_scaling.transform(gold_df)
 
-    # TODO: write directly to FeatureStore
-    return gold_df_transformed
+    return gold_df_transformed.select("features")
 
 @dlt.table
 def gold_no_scaled_features():
@@ -177,7 +183,6 @@ def gold_no_scaled_features():
     pipeline_model_no_scaling = PipelineModel.load(f"{pipeline_path}/no_scaling")
 
     gold_df_transformed = pipeline_model_no_scaling.transform(gold_df)
-
-    # TODO: write directly to FeatureStore
-    return gold_df_transformed
+        
+    return gold_df_transformed.select("features")
 

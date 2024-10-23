@@ -14,11 +14,11 @@ resources:
               destination : "${workspace.file_path}/src/init_scripts/dlt_init_script.sh"
       libraries:
         - notebook:
-            path: ../src/01_bronze_table.py
+            path: ../src/etl/01_bronze_table.py
         - notebook:
-            path: ../src/02_silver_table.py
+            path: ../src/etl/02_silver_table.py
         - notebook:
-            path: ../src/03_gold_table.py
+            path: ../src/etl/03_gold_table.py
       
       development: true
       configuration:
