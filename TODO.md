@@ -24,6 +24,7 @@
 - [ ] explore and tune models
     - [ ] manual exploration
     - [x] automl
+- [ ] create pipeline for refitting and saving preprocessing Pipeline objects
 - [ ] register good models
 - [ ] create pipeline for training current best model
 - [ ] create prediction pipeline

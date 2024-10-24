@@ -4,14 +4,9 @@ from pyspark.sql.functions import when, col, lit, desc
 from pyspark.sql.types import IntegerType, FloatType
 from pyspark.ml import PipelineModel
 from databricks.sdk.runtime import *
-from dlt_utils import create_lookup_df, load_yaml_config, get_column_data_type
-
-from databricks.feature_store import FeatureStoreClient
+from dlt_utils import create_lookup_df, load_yaml_config, get_column_data_type, rowwise_join
 
 
-# COMMAND ----------
-
-fs = FeatureStoreClient()
 
 # COMMAND ----------
 
@@ -61,7 +56,7 @@ def gold_mapping_lookup():
 
 @dlt.table
 def gold_customer_ml_target():
-    gold_df_target = dlt.read("silver_training_customer_data").select("segmentation")
+    gold_df_target = dlt.read("silver_training_customer_data").select("id","segmentation")
 
     # Custom encoding for segmentation (target column)
     gold_df_target = gold_df_target.withColumn("segmentation", 
@@ -72,15 +67,6 @@ def gold_customer_ml_target():
     )
     
     return gold_df_target
-
-# @dlt.table
-# def debug_gold_customer_features():
-#     silver_df = dlt.read("silver_training_customer_data")
-#     gold_df = silver_df.drop("id", "segmentation", "inserted_at")
-#     gold_df = gold_df.fillna("Other", subset=["profession"]).fillna("No", subset=["ever_married"])
-    
-#     # Debugging by outputting the intermediate gold_df
-#     return gold_df
 
 
 @dlt.table
@@ -146,13 +132,16 @@ def gold_customer_complete():
             print(f"No median value found for column {column}. Skipping imputation.")
 
 
+    # add back the ID column
+    id_df = silver_df.select("id")
+    gold_df = rowwise_join(gold_df, id_df)
 
     return gold_df
 
 # COMMAND ----------
 
 # TODO: MOVE PATH TO CONFIG
-spark.conf.get("pipeline_path")
+pipeline_path = spark.conf.get("pipeline_path")
 
 # COMMAND ----------
 
@@ -168,8 +157,12 @@ def gold_scaled_features():
     pipeline_model_scaling = PipelineModel.load(f"{pipeline_path}/scaling")
 
     gold_df_transformed = pipeline_model_scaling.transform(gold_df)
+    # add back the ID column
+    id_df = silver_df.select("id")
+    gold_df_transformed = rowwise_join(gold_df_transformed, id_df)
 
-    return gold_df_transformed.select("features")
+        
+    return gold_df_transformed.select("id","features")
 
 @dlt.table
 def gold_no_scaled_features():
@@ -183,6 +176,10 @@ def gold_no_scaled_features():
     pipeline_model_no_scaling = PipelineModel.load(f"{pipeline_path}/no_scaling")
 
     gold_df_transformed = pipeline_model_no_scaling.transform(gold_df)
+    # add back the ID column
+    id_df = silver_df.select("id")
+    gold_df_transformed = rowwise_join(gold_df_transformed, id_df)
+
         
-    return gold_df_transformed.select("features")
+    return gold_df_transformed.select("id","features")
 
