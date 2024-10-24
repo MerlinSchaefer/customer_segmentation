@@ -10,7 +10,7 @@ class DataFrameColumnManager:
     and identifying missing values, adhering to the Single Responsibility Principle.
     """
     
-    def __init__(self, df_train, df_test):
+    def __init__(self, df_train, df_test = None):
         """
         Initialize the class with training and testing DataFrames.
         
@@ -40,9 +40,14 @@ class DataFrameColumnManager:
         Updates:
         - Modifies both self.df_train and self.df_test by casting the specified columns to double.
         """
-        for column in columns:
-            self.df_train = self.df_train.withColumn(column, col(column).cast("double"))
-            self.df_test = self.df_test.withColumn(column, col(column).cast("double"))
+        if self.df_test:
+            for column in columns:
+                self.df_train = self.df_train.withColumn(column, col(column).cast("double"))
+                self.df_test = self.df_test.withColumn(column, col(column).cast("double"))
+        else:
+            for column in columns:
+                self.df_train = self.df_train.withColumn(column, col(column).cast("double"))
+
 
     def get_string_columns(self):
         """
