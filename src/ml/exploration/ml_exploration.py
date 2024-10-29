@@ -1,4 +1,7 @@
 # Databricks notebook source
+import sys
+sys.path.append("..")
+import pandas as pd
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 from pyspark.ml.classification import (LogisticRegression, DecisionTreeClassifier, RandomForestClassifier, GBTClassifier, MultilayerPerceptronClassifier, LinearSVC)
@@ -7,7 +10,7 @@ from pyspark.sql import DataFrame
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml import Pipeline
 from pyspark.ml.classification import OneVsRest
-from ..ml_utils import SklearnModelTester, SparkMLModelTester
+from ml_utils import SklearnModelTester, SparkMLModelTester
 
 # COMMAND ----------
 
@@ -71,6 +74,37 @@ df_scaled.display()
 
 # COMMAND ----------
 
+# for sklearn models
+# Convert the label and features to Pandas DataFrame
+# Extract labels as a list
+labels_scaled = df_scaled.select("label").rdd.flatMap(lambda x: x).collect()
+labes_unscaled = df_unscaled.select("label").rdd.flatMap(lambda x: x).collect()
+# Extract features as a list of lists (where each row is a feature vector)
+features_scaled = df_scaled.select("features").rdd \
+    .map(lambda row: row.features.toArray()) \
+    .collect()
+features_unscaled = df_unscaled.select("features").rdd \
+    .map(lambda row: row.features.toArray()) \
+        .collect()
+# Create a Pandas DataFrame from the features and labels
+pandas_df_scaled = pd.DataFrame(features_scaled)
+pandas_df_scaled['label'] = labels_scaled
+pandas_df_unscaled = pd.DataFrame(features_unscaled)
+pandas_df_unscaled['label'] = labes_unscaled
+
+
+y_scaled = pandas_df_scaled['label']
+X_scaled = pandas_df_scaled.drop('label', axis=1)
+y_unscaled = pandas_df_unscaled['label']
+X_unscaled = pandas_df_unscaled.drop('label', axis=1)
+
+# COMMAND ----------
+
+# Display the first few rows of the Pandas DataFrame
+display(pandas_df_unscaled)
+
+# COMMAND ----------
+
 model_params = {
     "scaled": [
                 (LogisticRegression, {"maxIter":[100],"regParam": [0.001,0.01, 0.1], "elasticNetParam": [0.0, 1.0]}),
@@ -97,13 +131,20 @@ model_tester.evaluate_models(model_params=model_params)
 # Get all results as a list of dictionaries
 results = model_tester.get_results()
 
-# Convert results to a DataFrame (using pandas for easier viewing)
-results_df = spark.createDataFrame(results)
-display(results_df)
+import json
+from pyspark.sql import Row
+
+# Convert hyperparameters to JSON string
+results_json = [Row(**{k: json.dumps(v) if isinstance(v, dict) else v for k, v in result.items()}) for result in results]
+
+# Create Spark DataFrame from results
+results_df = spark.createDataFrame(results_json)
+
+results_df.display()
 
 # COMMAND ----------
 
-results_df.write.table("customer_segmentation.initial_ml_tests")
+results_df.write.mode("append").saveAsTable("customer_segmentation.initial_ml_tests")
 
 # COMMAND ----------
 
@@ -113,7 +154,108 @@ results_df.write.table("customer_segmentation.initial_ml_tests")
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Let's try some other techniques to then go into full hyperparameter optimization with a couple model types.
+
+# COMMAND ----------
+
+# MAGIC %pip install catboost
+
+# COMMAND ----------
+
 from xgboost import XGBClassifier
 from catboost import CatBoostClassifier
 from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
+
+
+# COMMAND ----------
+
+xgboost_params = {
+    'learning_rate': [0.01, 0.1, 0.2],
+    'n_estimators': [100, 200, 500],
+    'max_depth': [3, 6, 12],
+    'min_child_weight': [1, 3, 5],
+    'gamma': [0, 0.1, 0.5],
+    'subsample': [0.8, 0.9, 1.0],
+    'colsample_bytree': [0.8, 0.9, 1.0]
+}
+
+# COMMAND ----------
+
+catboost_params = {
+    'iterations': [100, 200, 500],
+    'learning_rate': [0.01, 0.1, 0.2],
+    'depth': [4, 6, 10],
+    'l2_leaf_reg': [1, 3, 5, 9],
+    'border_count': [None],
+    'loss_function': ['Logloss', 'CrossEntropy'],
+    'eval_metric': ['Accuracy'],
+    'random_seed': [42]
+}
+
+# COMMAND ----------
+
+svc_params = {
+    'C': [0.1, 1, 10, 100],
+    'kernel': ['poly', 'rbf', 'sigmoid'],
+    'degree': [2, 3, 4],
+    'gamma': ['scale', 'auto'],
+    'coef0': [0.0, 0.5, 1.0]
+}
+
+# COMMAND ----------
+
+sklearn_tester_scaled = SklearnModelTester(X_scaled,y_scaled)
+sklearn_tester_unscaled = SklearnModelTester(X_unscaled,y_unscaled)
+# Create a list of models and their parameter grids
+models_scaled = [
+    (SVC, svc_params),
+]
+models_unscaled = [
+        (XGBClassifier, xgboost_params),
+    (CatBoostClassifier, catboost_params),
+]
+
+# COMMAND ----------
+
+
+sklearn_tester_scaled.evaluate_models(models_scaled, cv_type="random")
+
+
+
+
+# COMMAND ----------
+
+results
+
+# COMMAND ----------
+
+results = sklearn_tester_scaled.get_results()
+# Convert hyperparameters to JSON string
+results_json = [Row(**{k: json.dumps(v) if isinstance(v, dict) else v for k, v in result.items()}) for result in results]
+
+# Create Spark DataFrame from results
+results_df = spark.createDataFrame(results_json)
+
+results_df.display()
+
+# COMMAND ----------
+
+results_df.write.mode("append").saveAsTable("customer_segmentation.initial_ml_tests")
+
+# COMMAND ----------
+
+sklearn_tester_unscaled.evaluate_models(models_unscaled, cv_type="random")
+
+
+# COMMAND ----------
+
+
+results = sklearn_tester_unscaled.get_results()
+# Convert hyperparameters to JSON string
+results_json = [Row(**{k: json.dumps(v) if isinstance(v, dict) else v for k, v in result.items()}) for result in results]
+
+# Create Spark DataFrame from results
+results_df = spark.createDataFrame(results_json)
+
+results_df.display()

@@ -34,7 +34,7 @@ class ModelTesterBase(ABC):
         Log evaluation metrics to the results list.
         """
         # log metrics manually as autolog does not always capture everything
-        mlflow.log_metrics(metrics)
+        #mlflow.log_metrics(metrics)
         self.results.append({
             "model": model_class_name,
             "hyperparameters": param_dict,
@@ -55,6 +55,7 @@ class SparkMLModelTester(ModelTesterBase):
         super().__init__(label_col, num_folds, seed)
         self.df_scaled = df_scaled
         self.df_unscaled = df_unscaled
+        self.features_col = features_col
 
     def run_cv(self, model_class, param_dict, df):
         """
@@ -138,7 +139,7 @@ class SklearnModelTester(ModelTesterBase):
         self.X = X
         self.y = y
 
-    def run_cv(self, model_class, param_dict, X=None, y=None, cv_type="grid"):
+    def run_cv(self, model_class, param_dict, X=None, y=None, cv_type="grid", n_iter=10):
         """
         Run cross-validation on the specified model with given hyperparameters.
 
@@ -154,31 +155,34 @@ class SklearnModelTester(ModelTesterBase):
 
         assert cv_type in ["grid", "random"], "Invalid cross-validation type"
 
-        # create search objects
-        if cv_type == "grid":
-            search = GridSearchCV(model_class(), param_dict, cv=self.num_folds, scoring='f1_weighted', n_jobs=-1)
-        elif cv_type == "random":
-            search = RandomizedSearchCV(model_class(), param_dict, cv=self.num_folds, scoring='f1_weighted', n_jobs=-1)
+        # Use StratifiedKFold to ensure balanced splits
+        stratified_cv = StratifiedKFold(n_splits=self.num_folds, shuffle=True, random_state=self.seed)
 
-        print(f"running eval on {model_class.__name__} with {param_dict}")
-        search.fit(self.X, self.y)
+        # Create search object
+        if cv_type == "grid":
+            search = GridSearchCV(model_class(), param_dict, cv=stratified_cv, scoring='f1_weighted', n_jobs=-1)
+        elif cv_type == "random":
+            search = RandomizedSearchCV(model_class(), param_dict, cv=stratified_cv, scoring='f1_weighted', n_jobs=-1)
+
+        # Fit the search object
+        search.fit(X, y)
 
         # Best model from cross-validation
         best_model = search.best_estimator_
-        
-        # Make predictions
-        y_pred = cross_val_score(best_model, self.X, self.y, cv=self.num_folds)
 
-        # Calculate metrics
+        # Calculate metrics using cross_val_score
         metrics = {
-            "f1_score": np.mean(cross_val_score(best_model, self.X, self.y, cv=self.num_folds, scoring='f1_weighted')),
-            "accuracy": np.mean(cross_val_score(best_model, self.X, self.y, cv=self.num_folds, scoring='accuracy')),
-            "weighted_precision": np.mean(cross_val_score(best_model, self.X, self.y, cv=self.num_folds, scoring='precision_weighted')),
-            "weighted_recall": np.mean(cross_val_score(best_model, self.X, self.y, cv=self.num_folds, scoring='recall_weighted')),
+            "model": model_class.__name__,
+            "hyperparameters": param_dict,
+            "f1_score": np.mean(cross_val_score(best_model, X, y, cv=stratified_cv, scoring='f1_weighted')),
+            "accuracy": np.mean(cross_val_score(best_model, X, y, cv=stratified_cv, scoring='accuracy')),
+            "weighted_precision": np.mean(cross_val_score(best_model, X, y, cv=stratified_cv, scoring='precision_weighted')),
+            "weighted_recall": np.mean(cross_val_score(best_model, X, y, cv=stratified_cv, scoring='recall_weighted')),
         }
 
         # Log the results
         self.log_results(model_class.__name__, param_dict, metrics)
+        return metrics
 
     def evaluate_models(self, model_params, cv_type="grid"):
         """
@@ -190,3 +194,4 @@ class SklearnModelTester(ModelTesterBase):
         """
         for model_class, params in model_params:
             self.run_cv(model_class, params, cv_type=cv_type)
+
