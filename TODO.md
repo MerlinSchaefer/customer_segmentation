@@ -18,13 +18,14 @@
     - [x] create funcs for creating and saving pipelines with different steps
 - [ ] create MLOps structure
     - [ ] set up experiment tracking
+    - [ ] set up metrics logging within modeltests
     - [ ] set up feature store (discarded)
     - [ ] set up model registry
 
 - [ ] explore and tune models
     - [ ] manual exploration
     - [x] automl
-- [ ] create pipeline for refitting and saving preprocessing Pipeline objects
+- [x] create pipeline for refitting and saving preprocessing Pipeline objects
 - [ ] register good models
 - [ ] create pipeline for training current best model
 - [ ] create prediction pipeline
@@ -36,6 +37,6 @@
 
 
 - [ ] set up precommit
-- [ ] set up MLOps components in databricks
+- [x] set up MLOps components in databricks
 - [x] put jobs into `.databricks/resources/`
 - [ ] create github action CI/CD that deploys to dev/prod respectively
