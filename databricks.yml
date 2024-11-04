@@ -4,7 +4,7 @@ bundle:
   name: customer_segmentation
 
 include:
-  - resources/*.yml
+  - resources/customer_segmentation_*.yml
 
 targets:
   dev:

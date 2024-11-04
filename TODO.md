@@ -1,27 +1,31 @@
 
 ## Data
 
-- [ ] EDA for ETL
-- [ ] create synth data generation script
+- [x] EDA for ETL
+- [x] create synth data generation script
 - [ ] create pipeline to generate and land new data in cloud storage
 - [x] load initial data to cloud storage
-- [ ] create ETL pipeline for incoming training data
-- [ ] create ETL pipeline for incoming test/predict data 
+- [x] create ETL pipeline for incoming training data
+- [x] create ETL pipeline for incoming test/predict data 
 
 ## ML
 
-- [ ] EDA for ML
-- [ ] create pipline to load a preprocess data
-    - [ ] feature engineering
-    - [ ] data cleaning
+- [x] EDA for ML
+- [x] create pipline to load and preprocess data
+    - [x] feature engineering
+    - [x] data cleaning
+    - [x] create funcs for loading pipelines
+    - [x] create funcs for creating and saving pipelines with different steps
 - [ ] create MLOps structure
     - [ ] set up experiment tracking
-    - [ ] set up feature store
+    - [ ] set up metrics logging within modeltests
+    - [ ] set up feature store (discarded)
     - [ ] set up model registry
 
 - [ ] explore and tune models
     - [ ] manual exploration
     - [x] automl
+- [x] create pipeline for refitting and saving preprocessing Pipeline objects
 - [ ] register good models
 - [ ] create pipeline for training current best model
 - [ ] create prediction pipeline
@@ -33,6 +37,6 @@
 
 
 - [ ] set up precommit
-- [ ] set up MLOps components in databricks
-- [ ] put jobs into `.databricks/resources/`
+- [x] set up MLOps components in databricks
+- [x] put jobs into `.databricks/resources/`
 - [ ] create github action CI/CD that deploys to dev/prod respectively

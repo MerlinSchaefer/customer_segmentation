@@ -1,7 +1,7 @@
 import yaml
 import pyspark.sql.types as T
 from pyspark.sql import DataFrame
-from pyspark.sql.functions import lit
+from pyspark.sql.functions import lit, monotonically_increasing_id
 from databricks.sdk.runtime import *
 
 
@@ -67,3 +67,24 @@ def create_lookup_df(mapping: dict, column_name: str) -> DataFrame:
         T.StructField("column", T.StringType(), True)
     ])
     return spark.createDataFrame(lookup_list, schema=schema).withColumn("column", lit(column_name))
+
+def rowwise_join(df_1, df_2):
+    """
+    Joins two DataFrames rowwise, assuming the rows are aligned.
+    Adds a row index to each DataFrame and joins on this index.
+    
+    Parameters:
+    - df_1: DataFrame 1.
+    - df_2: DataFrame 2.
+
+    Returns:
+    - A DataFrame with both 'features' and 'target' columns joined by index.
+    """
+    # Add a row index to both DataFrames
+    df_1 = df_1.withColumn("row_index", monotonically_increasing_id())
+    df_2 = df_2.withColumn("row_index", monotonically_increasing_id())
+
+    # Perform the join on the row index
+    df_combined = df_1.join(df_2, on="row_index").drop("row_index")
+    
+    return df_combined
