@@ -1,16 +1,27 @@
 # Databricks notebook source
+# MAGIC %pip install catboost
+
+# COMMAND ----------
+
 import sys
 sys.path.append("..")
+import json
 import pandas as pd
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 from pyspark.ml.classification import (LogisticRegression, DecisionTreeClassifier, RandomForestClassifier, GBTClassifier, MultilayerPerceptronClassifier, LinearSVC)
 from pyspark.sql import functions as F
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, Row
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml import Pipeline
 from pyspark.ml.classification import OneVsRest
-from ml_utils import SklearnModelTester, SparkMLModelTester
+from ml_utils import SklearnModelTester, SparkMLModelTester, CatBoostModelTester
+from pyspark.sql.functions import col, udf
+from pyspark.ml.linalg import SparseVector, DenseVector
+from pyspark.sql.types import StringType
+from pyspark.ml.linalg import VectorUDT
+
+
 
 # COMMAND ----------
 
@@ -45,10 +56,7 @@ unscaled_df = unscaled_features.join(target, "id").withColumnRenamed("segmentati
 
 # COMMAND ----------
 
-from pyspark.sql.functions import col, udf
-from pyspark.ml.linalg import SparseVector, DenseVector
-from pyspark.sql.types import StringType
-from pyspark.ml.linalg import VectorUDT
+
 # UDF to convert sparse vectors to dense vectors
 def sparse_to_dense(vector):
     if isinstance(vector, SparseVector):
@@ -70,7 +78,7 @@ df_unscaled = convert_sparse_to_dense(unscaled_df)
 
 # COMMAND ----------
 
-df_scaled.display()
+#df_scaled.display()
 
 # COMMAND ----------
 
@@ -101,7 +109,7 @@ X_unscaled = pandas_df_unscaled.drop('label', axis=1)
 # COMMAND ----------
 
 # Display the first few rows of the Pandas DataFrame
-display(pandas_df_unscaled)
+#display(pandas_df_unscaled)
 
 # COMMAND ----------
 
@@ -131,8 +139,7 @@ model_tester.evaluate_models(model_params=model_params)
 # Get all results as a list of dictionaries
 results = model_tester.get_results()
 
-import json
-from pyspark.sql import Row
+
 
 # Convert hyperparameters to JSON string
 results_json = [Row(**{k: json.dumps(v) if isinstance(v, dict) else v for k, v in result.items()}) for result in results]
@@ -159,14 +166,9 @@ results_df.write.mode("append").saveAsTable("customer_segmentation.initial_ml_te
 
 # COMMAND ----------
 
-# MAGIC %pip install catboost
-
-# COMMAND ----------
-
 from xgboost import XGBClassifier
 from catboost import CatBoostClassifier
 from sklearn.svm import SVC
-
 
 # COMMAND ----------
 
@@ -187,10 +189,7 @@ catboost_params = {
     'learning_rate': [0.01, 0.1, 0.2],
     'depth': [4, 6, 10],
     'l2_leaf_reg': [1, 3, 5, 9],
-    'border_count': [None],
-    'loss_function': ['Logloss', 'CrossEntropy'],
-    'eval_metric': ['Accuracy'],
-    'random_seed': [42]
+    'random_seed': [13]
 }
 
 # COMMAND ----------
@@ -207,35 +206,108 @@ svc_params = {
 
 sklearn_tester_scaled = SklearnModelTester(X_scaled,y_scaled)
 sklearn_tester_unscaled = SklearnModelTester(X_unscaled,y_unscaled)
+catboost_tester = CatBoostModelTester(X_unscaled,y_unscaled)
 # Create a list of models and their parameter grids
 models_scaled = [
     (SVC, svc_params),
 ]
 models_unscaled = [
-        (XGBClassifier, xgboost_params),
-    (CatBoostClassifier, catboost_params),
+    (XGBClassifier, xgboost_params),
+]
+models_catboost = [
+    (CatBoostClassifier, catboost_params)
 ]
 
 # COMMAND ----------
 
-
-sklearn_tester_scaled.evaluate_models(models_scaled, cv_type="random")
-
-
-
+catboost_tester.evaluate_models(models_catboost)
 
 # COMMAND ----------
 
+results = catboost_tester.get_results()
 results
 
 # COMMAND ----------
 
+# Round metrics
+results = [{k: float(round(v, 5)) if isinstance(v, float) else v for k, v in result.items()} for result in results]
+# Convert hyperparameters to JSON string
+results_json = [Row(**{k: json.dumps(v) if isinstance(v, dict) else v for k, v in result.items()}) for result in results]
+
+results_json
+
+# COMMAND ----------
+
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+
+# Define schema based on results_json structure
+schema = StructType([
+    StructField("model", StringType(), True),
+    StructField("hyperparameters", StringType(), True),
+    StructField("best_parameters", StringType(), True),
+    StructField("f1_score", DoubleType(), True),
+    StructField("accuracy", DoubleType(), True),
+    StructField("weighted_precision", DoubleType(), True),
+    StructField("weighted_recall", DoubleType(), True),
+
+
+])
+
+# Create Spark DataFrame from results_json with schema
+results_df = spark.createDataFrame(results_json, schema)
+
+display(results_df)
+
+# COMMAND ----------
+
+results_df.write.mode("append").saveAsTable("customer_segmentation.initial_ml_tests")
+
+# COMMAND ----------
+
+sklearn_tester_scaled.evaluate_models(models_scaled, cv_type="random", n_iter = 30)
+
+# COMMAND ----------
+
 results = sklearn_tester_scaled.get_results()
+results
+
+# COMMAND ----------
+
+# Round metrics
+results = [{k: float(round(v, 5)) if isinstance(v, float) else v for k, v in result.items()} for result in results]
+# Convert hyperparameters to JSON string
+results_json = [Row(**{k: json.dumps(v) if isinstance(v, dict) else v for k, v in result.items()}) for result in results]
+
+results_json
+
+# COMMAND ----------
+
+
+# Create Spark DataFrame from results_json with schema
+results_df = spark.createDataFrame(results_json, schema)
+
+display(results_df)
+
+# COMMAND ----------
+
+results_df.write.mode("append").saveAsTable("customer_segmentation.initial_ml_tests")
+
+# COMMAND ----------
+
+sklearn_tester_unscaled.evaluate_models(models_unscaled, cv_type="random",n_iter = 30)
+
+
+# COMMAND ----------
+
+
+results = sklearn_tester_unscaled.get_results()
+# Round metrics
+results = [{k: float(round(v, 5)) if isinstance(v, float) else v for k, v in result.items()} for result in results]
 # Convert hyperparameters to JSON string
 results_json = [Row(**{k: json.dumps(v) if isinstance(v, dict) else v for k, v in result.items()}) for result in results]
 
 # Create Spark DataFrame from results
-results_df = spark.createDataFrame(results_json)
+results_df = spark.createDataFrame(results_json, schema)
 
 results_df.display()
 
@@ -245,17 +317,10 @@ results_df.write.mode("append").saveAsTable("customer_segmentation.initial_ml_te
 
 # COMMAND ----------
 
-sklearn_tester_unscaled.evaluate_models(models_unscaled, cv_type="random")
-
+spark.sql("SELECT * FROM customer_segmentation.initial_ml_tests ORDER BY f1_score DESC").display()
 
 # COMMAND ----------
 
-
-results = sklearn_tester_unscaled.get_results()
-# Convert hyperparameters to JSON string
-results_json = [Row(**{k: json.dumps(v) if isinstance(v, dict) else v for k, v in result.items()}) for result in results]
-
-# Create Spark DataFrame from results
-results_df = spark.createDataFrame(results_json)
-
-results_df.display()
+# MAGIC %md
+# MAGIC It looks like the tree based models specifically random forests and Catboost work best.
+# MAGIC The Neural Net  and XGB could possibly close the gap if we were to test a lot of options. For now however I will focus on the two model types mentioned above. 
