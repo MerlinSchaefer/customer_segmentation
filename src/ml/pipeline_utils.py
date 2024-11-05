@@ -6,7 +6,7 @@ from pyspark.ml import Pipeline
 from pyspark.ml.feature import Imputer, VectorAssembler, RobustScaler, StringIndexer, OneHotEncoder
 from pyspark.ml.linalg import SparseVector, DenseVector
 from pyspark.ml.linalg import VectorUDT
-
+from databricks.sdk.runtime import spark
 
 class DataFrameColumnManager:
     """
@@ -177,21 +177,22 @@ def adjust_labels(df: DataFrame, label_col: str="label") -> DataFrame:
                                            .when(col(label_col) == 4, 3))
     return adjusted_df
 
-# UDF to convert sparse vectors to dense vectors
-def sparse_to_dense(vector):
-    if isinstance(vector, SparseVector):
-        return DenseVector(vector.toArray())
-    else:
-        return vector
 
-# Registering the UDF to convert the vector
-sparse_to_dense_udf = udf(sparse_to_dense, VectorUDT())
 
 # Apply the UDF to the features column to convert to dense vectors
 def convert_sparse_to_dense(df:DataFrame, features_col="features") -> DataFrame:
     """
     Convert the features column from sparse vectors to dense vectors.
     """
+    # UDF to convert sparse vectors to dense vectors
+    def sparse_to_dense(vector):
+        if isinstance(vector, SparseVector):
+            return DenseVector(vector.toArray())
+        else:
+            return vector
+
+    # Registering the UDF to convert the vector
+    sparse_to_dense_udf = udf(sparse_to_dense, VectorUDT())
     return df.withColumn(features_col, sparse_to_dense_udf(df[features_col]))
 
 def convert_to_sklearn_dataframe(features_scaled:DataFrame,features_unscaled:DataFrame) -> (pd.DataFrame,pd.Series,pd.DataFrame, pd.Series):
@@ -202,13 +203,13 @@ def convert_to_sklearn_dataframe(features_scaled:DataFrame,features_unscaled:Dat
 
     # Convert the label and features to Pandas DataFrame
     # Extract labels as a list
-    labels_scaled = df_scaled.select("label").rdd.flatMap(lambda x: x).collect()
-    labes_unscaled = df_unscaled.select("label").rdd.flatMap(lambda x: x).collect()
+    labels_scaled = features_scaled.select("label").rdd.flatMap(lambda x: x).collect()
+    labes_unscaled = features_unscaled.select("label").rdd.flatMap(lambda x: x).collect()
     # Extract features as a list of lists (where each row is a feature vector)
-    features_scaled = df_scaled.select("features").rdd \
+    features_scaled = features_scaled.select("features").rdd \
         .map(lambda row: row.features.toArray()) \
         .collect()
-    features_unscaled = df_unscaled.select("features").rdd \
+    features_unscaled = features_unscaled.select("features").rdd \
         .map(lambda row: row.features.toArray()) \
             .collect()
     # Create a Pandas DataFrame from the features and labels
@@ -238,8 +239,8 @@ def load_and_prepare_ml_data(schema_name = "customer_segmentation_dev",
     target = spark.read.table(f"{schema_name}.{target_table_name}")
 
     target = adjust_labels(target, label_col="segmentation")
-    scaled_df = scaled_features.join(target, "id").withColumnRenamed("segmentation", "label").withColumn("label", F.col("label").cast("double"))
-    unscaled_df = unscaled_features.join(target, "id").withColumnRenamed("segmentation", "label").withColumn("label", F.col("label").cast("double"))
+    scaled_df = scaled_features.join(target, "id").withColumnRenamed("segmentation", "label").withColumn("label", col("label").cast("double"))
+    unscaled_df = unscaled_features.join(target, "id").withColumnRenamed("segmentation", "label").withColumn("label", col("label").cast("double"))
     df_scaled = convert_sparse_to_dense(scaled_df)
     df_unscaled = convert_sparse_to_dense(unscaled_df)
     return df_scaled, df_unscaled

@@ -272,3 +272,13 @@ class CatBoostModelTester(ModelTesterBase):
         Returns all results as a list of dictionaries.
         """
         return self.results
+    
+
+
+
+# helper function that we will use for getting latest version of a model
+def get_latest_model_version(model_name):
+    """Helper function to get latest model version"""
+    client = mlflow.MlflowClient()
+    model_version_infos = client.search_model_versions("name = '%s'" % model_name)
+    return max([model_version_info.version for model_version_info in model_version_infos])
