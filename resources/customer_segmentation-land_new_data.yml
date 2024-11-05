@@ -1,0 +1,46 @@
+resources:
+  jobs:
+    customer_segmentation_land_new_data:
+      name: customer_segmentation-land_new_data
+      tasks:
+        - task_key: Land_new_data
+          notebook_task:
+            notebook_path: /Workspace/Users/merlin.schaefer@analytical-software.de/customer_segmentation/src/data/Land
+              new data
+            base_parameters:
+              input_data_path: /dbfs/FileStore/customer_segmentation/train/Train.csv
+              train_output_path: /dbfs/FileStore/customer_segmentation/train/
+              test_output_path: /dbfs/FileStore/customer_segmentation/test/
+            source: WORKSPACE
+          job_cluster_key: Job_cluster
+          libraries:
+            - pypi:
+                package: sdv==1.16.2
+          timeout_seconds: 1800
+          health:
+            rules:
+              - metric: RUN_DURATION_SECONDS
+                op: GREATER_THAN
+                value: 900
+      job_clusters:
+        - job_cluster_key: Job_cluster
+          new_cluster:
+            spark_version: 15.4.x-scala2.12
+            spark_conf:
+              spark.master: local[*, 4]
+              spark.databricks.cluster.profile: singleNode
+            azure_attributes:
+              first_on_demand: 1
+              availability: ON_DEMAND_AZURE
+              spot_bid_max_price: -1
+            node_type_id: Standard_D4ds_v5
+            custom_tags:
+              ResourceClass: SingleNode
+            spark_env_vars:
+              PYSPARK_PYTHON: /databricks/python3/bin/python3
+            enable_elastic_disk: true
+            data_security_mode: LEGACY_SINGLE_USER_STANDARD
+            runtime_engine: STANDARD
+            num_workers: 0
+      queue:
+        enabled: true
