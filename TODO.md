@@ -3,10 +3,11 @@
 
 - [x] EDA for ETL
 - [x] create synth data generation script
-- [ ] create pipeline to generate and land new data in cloud storage
+- [x] create pipeline to generate and land new data in cloud storage
 - [x] load initial data to cloud storage
 - [x] create ETL pipeline for incoming training data
 - [x] create ETL pipeline for incoming test/predict data 
+- [ ] clear destinction for new data without inference column
 
 ## ML
 
@@ -16,14 +17,14 @@
     - [x] data cleaning
     - [x] create funcs for loading pipelines
     - [x] create funcs for creating and saving pipelines with different steps
-- [ ] create MLOps structure
-    - [ ] set up experiment tracking
-    - [ ] set up metrics logging within modeltests
+- [x] create MLOps structure
+    - [x] set up experiment tracking
+    - [x] set up metrics logging within modeltests
     - [ ] set up feature store (discarded)
-    - [ ] set up model registry
+    - [x] set up model registry
 
-- [ ] explore and tune models
-    - [ ] manual exploration
+- [x] explore and tune models
+    - [x] manual exploration
     - [x] automl
 - [x] create pipeline for refitting and saving preprocessing Pipeline objects
 - [ ] register good models
